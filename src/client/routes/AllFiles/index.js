@@ -3,6 +3,7 @@ import React from 'react'
 import AllFilesView from './AllFilesView'
 import useFetch from 'hooks/useFetch'
 import FetchFeedback from 'components/FetchFeedback'
+import HistoryContext from 'history'
 
 function createUpdateRequest ({ url, method, onSuccess }) {
   return async (data) => {
@@ -32,11 +33,16 @@ const AllFiles = () => {
       responses={[username, files]}
     >
       {() => (
-        <AllFilesView
-          addFile={addFile}
-          files={files.data}
-          username={_.get(username, 'data.username')}
-        />
+        <HistoryContext.Consumer>
+          {history => (
+            <AllFilesView
+              history={history}
+              addFile={addFile}
+              files={files.data}
+              username={_.get(username, 'data.username')}
+            />
+          )}
+        </HistoryContext.Consumer>
       )}
     </FetchFeedback>
   )

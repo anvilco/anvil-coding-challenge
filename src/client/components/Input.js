@@ -10,6 +10,7 @@ const StyledInput = styled.input`
   border: 2px solid ${theme.colors.inputBorderColor};
   border-radius: 0;
   font-size: 16px;
+  margin-bottom: 20px;
 `
 
 class Input extends React.Component {
@@ -23,7 +24,7 @@ class Input extends React.Component {
     return (
       <StyledInput
         {...others}
-        value={value || ''}
+        defaultValue={value || ''}
         onChange={this.handleChange}
       />
     )

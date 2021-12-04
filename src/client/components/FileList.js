@@ -1,6 +1,7 @@
 import { last } from 'lodash'
 import React from 'react'
 import PropTypes from 'prop-types'
+import includes from 'lodash/includes'
 import styled from 'styled-components'
 
 import theme from 'theme'
@@ -56,11 +57,21 @@ class FileList extends React.Component {
   }
 
   render () {
-    const { files } = this.props
+    const { files, filterBy } = this.props
+
+    const items = filterBy ? files.filter(({ filename }) => includes(filename, filterBy)) : files
+
+    if (items.length === 0) {
+      return (
+        <div>
+          No files match the current search term.
+        </div>
+      )
+    }
 
     return (
       <Content.List
-        items={files}
+        items={items}
         renderItem={(file, index) => (
           <React.Fragment key={index}>
             <CircleIcon>
@@ -96,6 +107,7 @@ FileList.propTypes = {
     description: PropTypes.string.isRequired,
     filename: PropTypes.string.isRequired,
   })).isRequired,
+  filterBy: PropTypes.string,
 }
 
 export default FileList

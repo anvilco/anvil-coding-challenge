@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import styled, { createGlobalStyle } from 'styled-components'
+import HistoryContext from './history'
 
 import theme from 'theme'
 
@@ -27,10 +28,12 @@ const AppContainer = styled.div`
 class App extends Component {
   render () {
     return (
-      <AppContainer>
-        <GlobalStyle />
-        <AllFiles />
-      </AppContainer>
+      <HistoryContext.Provider>
+        <AppContainer>
+          <GlobalStyle />
+          <AllFiles />
+        </AppContainer>
+      </HistoryContext.Provider>
     )
   }
 }
