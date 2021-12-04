@@ -1,4 +1,7 @@
 import React, { Component } from 'react'
+import has from 'lodash/has'
+import keyBy from 'lodash/keyBy'
+import set from 'lodash/set'
 import PropTypes from 'prop-types'
 import styled from 'styled-components'
 
@@ -16,9 +19,21 @@ export const Title = styled.h1`
   margin-bottom: 20px;
 `
 
+const getFileExtension = filename => filename.split('.').pop()
+
 class AllFilesView extends Component {
   handleAddFile = (data) => {
-    const { addFile } = this.props
+    const { addFile, files } = this.prop
+
+    const [baseName, extension] = data.file.name.split('.')
+    const filesByFilename = keyBy(files.filter(f => getFileExtension(f.filename) === extension), 'filename')
+
+    let version = 0
+    while (has(filesByFilename, data.file.name)) {
+      version += 1
+      set(data, 'file.name', `${baseName}(${version}).${extension}`)
+    }
+
     return addFile(data)
   }
 
@@ -44,7 +59,7 @@ class AllFilesView extends Component {
         )}
       >
         {() => (
-          <NewFileForm onSubmit={this.handleAddFile} />
+          <NewFileForm data-testid="new-file-form" onSubmit={this.handleAddFile} />
         )}
       </Toggler>
     )
