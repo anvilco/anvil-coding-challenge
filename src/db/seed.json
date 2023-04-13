@@ -7,19 +7,19 @@
     "src": "http://placekitten.com/200/300"
   }, {
     "id": "6eb00541-1fd5-4779-a155-ba0e53e0fdef",
-    "description": "Another kitten because the internet is for kittens, 500x300",
+    "description": "Another kitten, 500x300",
     "filename": "kitten(1).jpg",
     "mimetype": "image/jpg",
     "src": "http://placekitten.com/500/300"
   }, {
     "id": "6eb00541-1fd5-4779-a155-ba0e53e0f123",
-    "description": "The last kitten, I promise. Black & White because 🎨 (800x700)",
+    "description": "The last kitten. Black & White because 🎨 (800x700)",
     "filename": "kitten(2).jpg",
     "mimetype": "image/jpg",
     "src": "http://placekitten.com/g/800/700"
   }, {
     "id": "6eb00541-1fd5-4779-a155-ba0e53e0f12a",
-    "description": "A pretty fluffy dog. Waaaay too much fur for that beach",
+    "description": "A fluffy dog. Way too much fur for that beach",
     "filename": "dog(2).jpg",
     "mimetype": "image/jpg",
     "src": "https://placedog.net/1200/550"
