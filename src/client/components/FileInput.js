@@ -198,7 +198,6 @@ class FileInput extends React.Component {
     isDragActive,
     isDragAccept,
     isDragReject,
-    draggedFiles,
     ...others
   }) => {
     const {
@@ -264,7 +263,7 @@ FileInput.defaultProps = {
   disabled: false,
   touched: false,
   error: null,
-  accept: '', // can be mimetype
+  accept: {}, // can be { 'image/*': ['.png'] }
 
   showBackground: false,
   dropText: 'Drop a File',
