@@ -9,20 +9,28 @@ describe('db', function () {
   })
 
   it('writes a file', async function () {
-    res = db.get('files')
-      .insert({
+    res = db.instance
+      .prepare(`
+        INSERT INTO files
+          (description, filename, mimetype, src)
+          VALUES
+          (@description, @filename, @mimetype, @src)
+      `)
+      .run({
+        description: 'My file',
         filename,
         mimetype: 'text/plain',
         src: 'abc',
       })
-      .write()
     expect(res).to.be.ok
   })
 
   it('resets the db between tests', async function () {
-    res = db.get('files')
-      .filter((file) => file.filename === filename)
-      .value()
+    res = db.instance.
+      prepare(`
+        SELECT * from files where filename = @filename
+      `)
+      .all({ filename })
     expect(res).to.eql([])
   })
 })
