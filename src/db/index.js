@@ -1,31 +1,31 @@
-const { cloneDeep } = require('lodash')
 const fs = require('fs')
-const low = require('lowdb')
-const FileSync = require('lowdb/adapters/FileSync')
-const lodashId = require('lodash-id')
+const path = require('path')
+const Database = require('better-sqlite3')
 
-const seedDB = 'src/db/seed.json'
-const devDB = 'src/db/dev.json'
-const testDB = 'src/db/test.json'
+const SEED_DB = path.join(__dirname, 'seed.db')
+const DEV_DB = path.join(__dirname, 'dev.db')
+const TEST_DB = path.join(__dirname, 'test.db')
 
-const localDB = process.env.NODE_ENV === 'test'
-  ? testDB
-  : devDB
+function copySeedDB ({ force=false }={}) {
+  const localDBPath = process.env.NODE_ENV === 'test'
+    ? TEST_DB
+    : DEV_DB
 
-if (!fs.existsSync(localDB)) {
-  console.log('Building DB from seed....')
-  fs.writeFileSync(localDB, fs.readFileSync(seedDB))
+  if (force || !fs.existsSync(localDBPath)) {
+    fs.writeFileSync(localDBPath, fs.readFileSync(SEED_DB))
+  }
+  return localDBPath
 }
+const localDBPath = copySeedDB()
 
-const adapter = new FileSync(localDB)
-const db = low(adapter)
+let db = new Database(localDBPath)
 
-db._.mixin(lodashId)
-
-let seedDBJSON = null
-db.resetToSeed = () => {
-  if (!seedDBJSON) seedDBJSON = JSON.parse(fs.readFileSync(seedDB))
-  db.setState(cloneDeep(seedDBJSON))
+module.exports = {
+  get instance () {
+    return db
+  },
+  resetToSeed () {
+    copySeedDB({ force: true })
+    db = new Database(localDBPath)
+  },
 }
-
-module.exports = db
