@@ -7,6 +7,7 @@ import FileList from 'components/FileList'
 import Button from 'components/Button'
 import Toggler from 'components/Toggler'
 import IconPlus from 'components/icons/IconPlus'
+import SearchInput from 'components/SearchInput'
 
 import NewFileForm from './NewFileForm'
 
@@ -19,6 +20,34 @@ export const Title = styled.h1`
 `
 
 class AllFilesView extends Component {
+  constructor (props) {
+    super(props)
+
+    this.state = {
+      search: '',
+      filteredFiles: props.files,
+    }
+
+    this.updateSearchState = this.updateSearchState.bind(this)
+  }
+
+  componentDidMount () {
+    this.updateSearchState()
+
+    this.bindEvents()
+  }
+
+  componentDidUpdate (prevProps, prevState, snapshot) {
+    if (this.state.search !== prevState.search) {
+      this.updateSearchQueryParam()
+      this.updateFilesList()
+    }
+  }
+
+  componentWillUnmount () {
+    this.unbindEvents()
+  }
+
   handleAddFile = (data) => {
     const { addFile, files } = this.props
 
@@ -27,12 +56,63 @@ class AllFilesView extends Component {
     return addFile(data)
   }
 
+  handleSearchChange = (search) => {
+    this.setState({
+      ...this.state,
+      search,
+    })
+  }
+
+  updateSearchQueryParam () {
+    const { search } = this.state
+    const url = new URL(window.location)
+    url.searchParams.set("search", search)
+
+    window.history.pushState({}, '', url)
+  }
+
+  updateSearchState () {
+      const url = new URL(window.location)
+      const searchParams = url.searchParams.get('search')
+
+      this.setState({
+        ...this.state,
+        search: searchParams,
+      })
+    }
+
+  bindEvents () {
+    window.addEventListener("popstate", this.updateSearchState)
+  }
+
+  unbindEvents () {
+    window.removeEventListener("popstate", this.updateSearchState)
+  }
+
+  updateFilesList () {
+    const { search } = this.state
+    const { files } = this.props
+
+    const filteredFiles = files.filter(({ filename, description }) => {
+      return !search
+          || filename.toLowerCase().includes(search.toLowerCase())
+          || description.toLowerCase().includes(search.toLowerCase())
+    })
+
+    this.setState({
+      ...this.state,
+      filteredFiles,
+    })
+  }
+
   renderFiles () {
-    const { files, removeFile } = this.props
+    const { filteredFiles } = this.state
+    const { removeFile } = this.props
+
     return (
       <Content.Card>
         <FileList
-          files={files}
+          files={filteredFiles}
           onRemoveFile={removeFile}
         />
       </Content.Card>
@@ -56,11 +136,23 @@ class AllFilesView extends Component {
     )
   }
 
+  renderSearchInput () {
+    const { search } = this.state
+
+    return (
+        <SearchInput
+        value={search}
+        placeholder="Search by keyword"
+        onChange={this.handleSearchChange} />
+    )
+  }
+
   render () {
     const { username } = this.props
     return (
       <StyledContainer>
         <Title>{`Hi ${username} 👋`}</Title>
+        {this.renderSearchInput()}
         {this.renderFiles()}
         {this.renderNewFileForm()}
       </StyledContainer>
