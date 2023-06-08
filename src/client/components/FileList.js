@@ -7,9 +7,11 @@ import theme from 'theme'
 
 import IconDocument from 'components/icons/IconDocument'
 import IconImage from 'components/icons/IconImage'
+import IconRemove from 'components/icons/IconRemove'
 
 import Content from 'components/Content'
 import CircleIcon from 'components/CircleIcon'
+import Button from 'components/Button'
 
 const TypeContainer = styled.div`
   margin-right: 6px;
@@ -56,7 +58,7 @@ class FileList extends React.Component {
   }
 
   render () {
-    const { files } = this.props
+    const { files, onRemoveFile } = this.props
 
     return (
       <Content.List
@@ -79,6 +81,11 @@ class FileList extends React.Component {
                 {getFileType(file.mimetype)} {isImageType(file.mimetype) ? 'image' : ''}
               </TypeContainer>
             </Content.List.Actions>
+              <Button onClick={() => {
+                  onRemoveFile(file)
+              }} type="danger">
+                  <IconRemove />
+              </Button>
           </React.Fragment>
         )}
       />
@@ -90,6 +97,7 @@ FileList.defaultProps = {
 }
 
 FileList.propTypes = {
+  onRemoveFile: PropTypes.func.isRequired,
   files: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
     mimetype: PropTypes.string.isRequired,

@@ -22,6 +22,12 @@ const AllFiles = () => {
   const username = useFetch('/api/username')
   const files = useFetch('/api/files')
 
+  const removeFile = createUpdateRequest({
+    url: '/api/files',
+    method: 'DELETE',
+    onSuccess: () => files.refetch(),
+  })
+
   const addFile = createUpdateRequest({
     url: '/api/files',
     onSuccess: () => files.refetch(),
@@ -34,6 +40,7 @@ const AllFiles = () => {
       {() => (
         <AllFilesView
           addFile={addFile}
+          removeFile={removeFile}
           files={files.data}
           username={_.get(username, 'data.username')}
         />

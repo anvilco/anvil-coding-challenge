@@ -38,6 +38,17 @@ function buildRoutes (router) {
     return res.send(newFile)
   })
 
+  router.delete('/api/files', async (req, res) => {
+    const { filename, description } = req.body
+
+    db.instance
+        .prepare(`
+            DELETE FROM files WHERE filename = @filename and description = @description
+      `).run({ description, filename })
+
+    return res.send('Ok')
+  })
+
   return router
 }
 
