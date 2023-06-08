@@ -10,6 +10,8 @@ import IconPlus from 'components/icons/IconPlus'
 
 import NewFileForm from './NewFileForm'
 
+import { getUniqueFileName } from 'utils/file'
+
 const StyledContainer = styled.div``
 
 export const Title = styled.h1`
@@ -18,16 +20,20 @@ export const Title = styled.h1`
 
 class AllFilesView extends Component {
   handleAddFile = (data) => {
-    const { addFile } = this.props
+    const { addFile, files } = this.props
+
+    data.file.name = getUniqueFileName(data.file.name, files)
+
     return addFile(data)
   }
 
   renderFiles () {
-    const { files } = this.props
+    const { files, removeFile } = this.props
     return (
       <Content.Card>
         <FileList
           files={files}
+          onRemoveFile={removeFile}
         />
       </Content.Card>
     )
@@ -64,6 +70,7 @@ class AllFilesView extends Component {
 
 AllFilesView.propTypes = {
   addFile: PropTypes.func.isRequired,
+  removeFile: PropTypes.func.isRequired,
   username: PropTypes.string.isRequired,
   files: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
