@@ -11,7 +11,9 @@ import SearchInput from 'components/SearchInput'
 
 import NewFileForm from './NewFileForm'
 
+import { getQueryParam, updateQueryParam } from "utils/queryParams"
 import { getUniqueFileName } from 'utils/file'
+import debounce from 'lodash/debounce'
 
 const StyledContainer = styled.div``
 
@@ -29,6 +31,7 @@ class AllFilesView extends Component {
     }
 
     this.updateSearchState = this.updateSearchState.bind(this)
+    this.debouncedHandleNewSearchState = debounce(this.handleNewSearchState, 200)
   }
 
   componentDidMount () {
@@ -39,8 +42,7 @@ class AllFilesView extends Component {
 
   componentDidUpdate (prevProps, prevState, snapshot) {
     if (this.state.search !== prevState.search) {
-      this.updateSearchQueryParam()
-      this.updateFilesList()
+      this.debouncedHandleNewSearchState()
     }
   }
 
@@ -63,21 +65,23 @@ class AllFilesView extends Component {
     })
   }
 
+  handleNewSearchState () {
+    this.updateSearchQueryParam()
+    this.updateFilesList()
+  }
+
   updateSearchQueryParam () {
     const { search } = this.state
-    const url = new URL(window.location)
-    url.searchParams.set("search", search)
 
-    window.history.pushState({}, '', url)
+    updateQueryParam('search', search)
   }
 
   updateSearchState () {
-      const url = new URL(window.location)
-      const searchParams = url.searchParams.get('search')
+      const search = getQueryParam('search')
 
       this.setState({
         ...this.state,
-        search: searchParams,
+        search,
       })
     }
 
