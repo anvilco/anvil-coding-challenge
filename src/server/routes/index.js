@@ -16,12 +16,20 @@ function buildRoutes (router) {
 
     // Check if the filename_hash column exists in the table schema
     const schema = instance.prepare("PRAGMA table_info('files')").all()
-    const columnExists = schema.some((column) => column.name === 'filename_hash')
+    const filenameHashColumnExists = schema.some((column) => column.name === 'filename_hash')
+    const duplicateCountColumnExists = schema.some((column) => column.name === 'duplicate_count')
 
-    // If the column does not exist, add it to the table schema
-    if (!columnExists) {
+    // If the filename_hash column does not exist, add it to the table schema
+    if (!filenameHashColumnExists) {
       instance.prepare(`
         ALTER TABLE files ADD COLUMN filename_hash VARCHAR(64)
+      `).run()
+    }
+
+    // If the duplicate_count column does not exist, add it to the table schema
+    if (!duplicateCountColumnExists) {
+      instance.prepare(`
+        ALTER TABLE files ADD COLUMN duplicate_count INTEGER DEFAULT 0
       `).run()
     }
 
