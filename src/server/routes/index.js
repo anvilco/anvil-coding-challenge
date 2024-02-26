@@ -6,6 +6,10 @@ const crypto = require('crypto')
 // https://github.com/WiseLibs/better-sqlite3
 // https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md
 
+function getHash(name) {
+  return crypto.createHash('sha256').update(name).digest('hex')
+}
+
 function buildRoutes (router) {
   router.get('/api/username', async (req, res) => {
     return res.send({ username: os.userInfo().username })
@@ -46,7 +50,7 @@ function buildRoutes (router) {
     // Update the filename_hash column for each row
     for (const row of rows) {
       const { id, filename } = row
-      const hash = crypto.createHash('sha256').update(filename).digest('hex')
+      const hash = getHash(filename)
       
       // Update the filename_hash column with the calculated hash value
       instance.prepare(`
@@ -64,6 +68,11 @@ function buildRoutes (router) {
 
   router.post('/api/files', async (req, res) => {
     const { description, file } = req.body
+    const count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(file.filename_hash);
+    const isDuplicateFilename = count > 0;
+
+    if (isDuplicateFilename) {
+    }
     const newFile = db.instance
       .prepare(`
         INSERT INTO files
@@ -77,7 +86,7 @@ function buildRoutes (router) {
         filename: file.name,
         mimetype: file.mimetype,
         src: file.base64,
-        filename_hash: crypto.createHash('sha256').update(file.name).digest('hex'),
+        filename_hash: getHash(file.name)
       })
     return res.send(newFile)
   })
