@@ -68,11 +68,29 @@ function buildRoutes (router) {
 
   router.post('/api/files', async (req, res) => {
     const { description, file } = req.body
-    const count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(file.filename_hash);
-    const isDuplicateFilename = count > 0;
+    const hash = getHash(file.name)
+    const count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
+    const hasDuplicateFilename = count > 0
+    let uniqueFilename = file.name
 
-    if (isDuplicateFilename) {
-    }
+    if (hasDuplicateFilename) {
+      const duplicateCounts = db.instance.prepare(`
+          SELECT duplicate_count FROM files
+          WHERE filename_hash = ?
+          ORDER BY duplicate_count ASC
+      `).all(hash)
+  
+      const existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
+      let nextCount = 0
+  
+      while (existingCounts.has(nextCount)) {
+          nextCount++
+      }
+  
+      const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
+      uniqueFilename = `${namePart}(${nextCount}).${extension}`
+  }
+  
     const newFile = db.instance
       .prepare(`
         INSERT INTO files
@@ -83,10 +101,10 @@ function buildRoutes (router) {
       `)
       .get({
         description,
-        filename: file.name,
+        filename: uniqueFilename,
         mimetype: file.mimetype,
         src: file.base64,
-        filename_hash: getHash(file.name)
+        filename_hash: getHash(file.name),
       })
     return res.send(newFile)
   })
