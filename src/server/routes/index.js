@@ -96,7 +96,7 @@ function buildRoutes (router) {
     const hasDuplicateFilename = count > 0
     let uniqueFilename = file.name
 
-    let nextCount = 0
+    let nextCount = 1
     if (hasDuplicateFilename) {
       const duplicateCounts = db.instance.prepare(`
           SELECT duplicate_count FROM files
@@ -111,7 +111,7 @@ function buildRoutes (router) {
   
       const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
       uniqueFilename = `${namePart}(${nextCount}).${extension}`
-  }
+    }
     const newFile = db.instance
       .prepare(`
         INSERT INTO files
