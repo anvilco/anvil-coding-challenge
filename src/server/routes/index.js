@@ -129,7 +129,8 @@ function processFile (file) {
 
     let duplicateCounts = getDuplicateCounts(hash)
 
-    let nextCount = 1
+    const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
+    let nextCount = duplicateCount !== 0 ? 1 : 0 // Initialize nextCount to 1 if filename already has a duplicate count, else 0
     let existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
 
     // Find duplicates of the original filename instead of the cleaned filename if adding it would create a duplicate
@@ -142,7 +143,6 @@ function processFile (file) {
         while (existingCounts.has(nextCount)) {
             nextCount++
         }
-        const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
         uniqueFilename = `${namePart}(${nextCount}).${extension}`
     }
 
@@ -151,7 +151,6 @@ function processFile (file) {
             nextCount++
         }
         if (nextCount > 0) {
-            const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
             uniqueFilename = `${namePart}(${nextCount}).${extension}`
         }
     }
