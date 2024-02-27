@@ -12,11 +12,11 @@ function getHash (name) {
 
 // Extract duplicate count from a filename or returns 0 if there isn't any
 function extractDuplicateCount (filename) {
-  const regex = /\((\d+)\)/ // Matches a number inside parentheses
+  const regex = /\((\d+)\)\./ // Matches a number inside parentheses followed by a period
   const match = regex.exec(filename)
 
   if (match && match[1]) {
-      const cleanedFilename = filename.replace(match[0], '') // Remove matched pattern from filename
+      const cleanedFilename = filename.replace(match[0], '.') // Remove number inside parentheses from filename 
       return {
           duplicateCount: parseInt(match[1]),
           cleanedFilename,
@@ -100,27 +100,50 @@ function buildRoutes (router) {
 
   router.post('/api/files', async (req, res) => {
     const { description, file } = req.body
-    const hash = getHash(file.name)
-    const count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
-    const hasDuplicateFilename = count > 0
     let uniqueFilename = file.name
+    const filenameAndDuplicateCount = extractDuplicateCount(file.name)
+    let duplicateCount = filenameAndDuplicateCount.duplicateCount
+    const cleanedFilename = filenameAndDuplicateCount.cleanedFilename
+
+    let hash = getHash(cleanedFilename)
+    let count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
+    let hasDuplicateFilename = count > 0
+    let duplicateCounts = db.instance.prepare(`
+        SELECT duplicate_count FROM files
+        WHERE filename_hash = ?
+        ORDER BY duplicate_count ASC
+    `).all(hash)
 
     let nextCount = 1
-    if (hasDuplicateFilename) {
-      const duplicateCounts = db.instance.prepare(`
-          SELECT duplicate_count FROM files
-          WHERE filename_hash = ?
-          ORDER BY duplicate_count ASC
-      `).all(hash)
-  
-      const existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
-      while (existingCounts.has(nextCount)) {
-          nextCount++
-      }
-  
-      const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
-      uniqueFilename = `${namePart}(${nextCount}).${extension}`
+    let existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
+
+    if (hasDuplicateFilename && existingCounts.has(duplicateCount)) {
+        hash = getHash(file.name)
+        count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
+        hasDuplicateFilename = count > 0
+        duplicateCounts = db.instance.prepare(`
+            SELECT duplicate_count FROM files
+            WHERE filename_hash = ?
+            ORDER BY duplicate_count ASC
+        `).all(hash)
+        existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
+        while (existingCounts.has(nextCount)) {
+            nextCount++
+        }
+        const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
+        uniqueFilename = `${namePart}(${nextCount}).${extension}`
     }
+
+    if (hasDuplicateFilename) {
+        while (existingCounts.has(nextCount)) {
+            nextCount++
+        }
+        if (nextCount > 0) {
+            const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
+            uniqueFilename = `${namePart}(${nextCount}).${extension}`
+        }
+    }
+
     const newFile = db.instance
       .prepare(`
         INSERT INTO files
@@ -135,7 +158,7 @@ function buildRoutes (router) {
         mimetype: file.mimetype,
         src: file.base64,
         filename_hash: hash,
-        duplicate_count: hasDuplicateFilename ? nextCount : 0,
+        duplicate_count: nextCount,
       })
     return res.send(newFile)
   })
