@@ -100,32 +100,44 @@ function buildRoutes (router) {
 
   router.post('/api/files', async (req, res) => {
     const { description, file } = req.body
-    let uniqueFilename = file.name
-    const filenameAndDuplicateCount = extractDuplicateCount(file.name)
-    let duplicateCount = filenameAndDuplicateCount.duplicateCount
-    const cleanedFilename = filenameAndDuplicateCount.cleanedFilename
+    const { uniqueFilename, hash, nextCount } = processFile(file)
+    
+    const newFile = db.instance.prepare(`
+        INSERT INTO files
+            (description, filename, mimetype, src, filename_hash, duplicate_count)
+        VALUES
+            (@description, @filename, @mimetype, @src, @filename_hash, @duplicate_count)
+        RETURNING *
+    `).get({
+        description,
+        filename: uniqueFilename,
+        mimetype: file.mimetype,
+        src: file.base64,
+        filename_hash: hash,
+        duplicate_count: nextCount,
+    })
 
+    return res.send(newFile)
+})
+
+function processFile (file) {
+    let uniqueFilename = file.name
+    const { duplicateCount, cleanedFilename } = extractDuplicateCount(file.name)
     let hash = getHash(cleanedFilename)
     let count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
     let hasDuplicateFilename = count > 0
-    let duplicateCounts = db.instance.prepare(`
-        SELECT duplicate_count FROM files
-        WHERE filename_hash = ?
-        ORDER BY duplicate_count ASC
-    `).all(hash)
+
+    let duplicateCounts = getDuplicateCounts(hash)
 
     let nextCount = 1
     let existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
 
+    // Find duplicates of the original filename instead of the cleaned filename if adding it would create a duplicate
     if (hasDuplicateFilename && existingCounts.has(duplicateCount)) {
         hash = getHash(file.name)
         count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
         hasDuplicateFilename = count > 0
-        duplicateCounts = db.instance.prepare(`
-            SELECT duplicate_count FROM files
-            WHERE filename_hash = ?
-            ORDER BY duplicate_count ASC
-        `).all(hash)
+        duplicateCounts = getDuplicateCounts(hash)
         existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
         while (existingCounts.has(nextCount)) {
             nextCount++
@@ -144,24 +156,17 @@ function buildRoutes (router) {
         }
     }
 
-    const newFile = db.instance
-      .prepare(`
-        INSERT INTO files
-          (description, filename, mimetype, src, filename_hash, duplicate_count)
-          VALUES
-          (@description, @filename, @mimetype, @src, @filename_hash, @duplicate_count)
-          RETURNING *
-      `)
-      .get({
-        description,
-        filename: uniqueFilename,
-        mimetype: file.mimetype,
-        src: file.base64,
-        filename_hash: hash,
-        duplicate_count: nextCount,
-      })
-    return res.send(newFile)
-  })
+    return { uniqueFilename, hash, nextCount }
+}
+
+// Retrieve all duplicate counts for the given hash from the database
+function getDuplicateCounts (hash) {
+  return db.instance.prepare(`
+      SELECT duplicate_count FROM files
+      WHERE filename_hash = ?
+      ORDER BY duplicate_count ASC
+  `).all(hash)
+}
 
   return router
 }
