@@ -10,15 +10,22 @@ function getHash (name) {
   return crypto.createHash('sha256').update(name).digest('hex')
 }
 
-// Get duplicate count from a filename or 0 if there isn't any
+// Extract duplicate count from a filename or returns 0 if there isn't any
 function extractDuplicateCount (filename) {
-  const regex = /\((\d+)\)./ // Match a number inside parentheses followed by a period
+  const regex = /\((\d+)\)/ // Matches a number inside parentheses
   const match = regex.exec(filename)
 
   if (match && match[1]) {
-      return parseInt(match[1])
+      const cleanedFilename = filename.replace(match[0], '') // Remove matched pattern from filename
+      return {
+          duplicateCount: parseInt(match[1]),
+          cleanedFilename,
+      }
   } else {
-      return 0
+      return {
+          duplicateCount: 0, // Return 0 if no match is found
+          cleanedFilename: filename,
+      }
   }
 }
 
@@ -57,8 +64,10 @@ function setupDb () {
 
   for (const row of rows) {
     const { id, filename } = row
-    const hash = getHash(filename)
-    const duplicateCount = extractDuplicateCount(filename)
+    const result = extractDuplicateCount(filename)
+    const duplicateCount = result.duplicateCount
+    const cleanedFilename = result.cleanedFilename
+    const hash = getHash(cleanedFilename)
     
     // Update the filename_hash column with the calculated hash value
     instance.prepare(`
