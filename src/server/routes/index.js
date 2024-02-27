@@ -73,6 +73,7 @@ function buildRoutes (router) {
     const hasDuplicateFilename = count > 0
     let uniqueFilename = file.name
 
+    let nextCount = 0
     if (hasDuplicateFilename) {
       const duplicateCounts = db.instance.prepare(`
           SELECT duplicate_count FROM files
@@ -81,8 +82,6 @@ function buildRoutes (router) {
       `).all(hash)
   
       const existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
-      let nextCount = 0
-  
       while (existingCounts.has(nextCount)) {
           nextCount++
       }
@@ -90,13 +89,12 @@ function buildRoutes (router) {
       const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
       uniqueFilename = `${namePart}(${nextCount}).${extension}`
   }
-  
     const newFile = db.instance
       .prepare(`
         INSERT INTO files
-          (description, filename, mimetype, src, filename_hash)
+          (description, filename, mimetype, src, filename_hash, duplicate_count)
           VALUES
-          (@description, @filename, @mimetype, @src, @filename_hash)
+          (@description, @filename, @mimetype, @src, @filename_hash, @duplicate_count)
           RETURNING *
       `)
       .get({
@@ -105,6 +103,7 @@ function buildRoutes (router) {
         mimetype: file.mimetype,
         src: file.base64,
         filename_hash: getHash(file.name),
+        duplicate_count: hasDuplicateFilename ? nextCount : 0,
       })
     return res.send(newFile)
   })
