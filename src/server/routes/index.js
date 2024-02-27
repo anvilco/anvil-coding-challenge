@@ -6,8 +6,72 @@ const crypto = require('crypto')
 // https://github.com/WiseLibs/better-sqlite3
 // https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md
 
-function getHash(name) {
+function getHash (name) {
   return crypto.createHash('sha256').update(name).digest('hex')
+}
+
+// Get duplicate count from a filename or 0 if there isn't any
+function extractDuplicateCount (filename) {
+  const regex = /\((\d+)\)./ // Match a number inside parentheses followed by a period
+  const match = regex.exec(filename)
+
+  if (match && match[1]) {
+      return parseInt(match[1])
+  } else {
+      return 0
+  }
+}
+
+// Add filename_hash and duplicate_count columns to db
+function setupDb () {
+  const instance = db.instance
+
+  // Check if the filename_hash column exists in the table schema
+  const schema = instance.prepare("PRAGMA table_info('files')").all()
+  const filenameHashColumnExists = schema.some((column) => column.name === 'filename_hash')
+  const duplicateCountColumnExists = schema.some((column) => column.name === 'duplicate_count')
+
+  // If the filename_hash column does not exist, add it to the table schema
+  if (!filenameHashColumnExists) {
+    instance.prepare(`
+      ALTER TABLE files ADD COLUMN filename_hash VARCHAR(64)
+    `).run()
+  }
+
+  // If the duplicate_count column does not exist, add it to the table schema
+  if (!duplicateCountColumnExists) {
+    instance.prepare(`
+      ALTER TABLE files ADD COLUMN duplicate_count INTEGER
+    `).run()
+  }
+
+  // Create an index for the filename_hash column
+  instance.prepare(`
+    CREATE INDEX IF NOT EXISTS idx_filename_hash ON files (filename_hash)
+  `).run()
+
+  // Select all rows from the files table
+  const rows = instance.prepare(`
+    SELECT id, filename FROM files
+  `).all()
+
+  for (const row of rows) {
+    const { id, filename } = row
+    const hash = getHash(filename)
+    const duplicateCount = extractDuplicateCount(filename)
+    
+    // Update the filename_hash column with the calculated hash value
+    instance.prepare(`
+      UPDATE files SET filename_hash = ?
+      WHERE id = ? AND filename_hash IS NULL
+    `).run(hash, id)
+
+    // Update the duplicate_count column with the extracted duplicate count
+    instance.prepare(`
+      UPDATE files SET duplicate_count = ? 
+      WHERE id = ? AND duplicate_count IS NULL
+    `).run(duplicateCount, id)
+  }
 }
 
 function buildRoutes (router) {
@@ -16,48 +80,7 @@ function buildRoutes (router) {
   })
 
   router.get('/api/files', async (req, res) => {
-    const instance = db.instance
-
-    // Check if the filename_hash column exists in the table schema
-    const schema = instance.prepare("PRAGMA table_info('files')").all()
-    const filenameHashColumnExists = schema.some((column) => column.name === 'filename_hash')
-    const duplicateCountColumnExists = schema.some((column) => column.name === 'duplicate_count')
-
-    // If the filename_hash column does not exist, add it to the table schema
-    if (!filenameHashColumnExists) {
-      instance.prepare(`
-        ALTER TABLE files ADD COLUMN filename_hash VARCHAR(64)
-      `).run()
-    }
-
-    // If the duplicate_count column does not exist, add it to the table schema
-    if (!duplicateCountColumnExists) {
-      instance.prepare(`
-        ALTER TABLE files ADD COLUMN duplicate_count INTEGER DEFAULT 0
-      `).run()
-    }
-
-    // Create an index for the filename_hash column
-    instance.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_filename_hash ON files (filename_hash)
-    `).run()
-
-    // Select all rows from the files table
-    const rows = instance.prepare(`
-      SELECT id, filename FROM files WHERE filename_hash IS NULL
-    `).all()
-
-    // Update the filename_hash column for each row
-    for (const row of rows) {
-      const { id, filename } = row
-      const hash = getHash(filename)
-      
-      // Update the filename_hash column with the calculated hash value
-      instance.prepare(`
-        UPDATE files SET filename_hash = ? WHERE id = ?
-      `).run(hash, id)
-    }
-  
+    setupDb() // Add filename_hash and duplicate_count columns to db on first run
     const files = db.instance
       .prepare(`
         SELECT * FROM files
@@ -102,7 +125,7 @@ function buildRoutes (router) {
         filename: uniqueFilename,
         mimetype: file.mimetype,
         src: file.base64,
-        filename_hash: getHash(file.name),
+        filename_hash: hash,
         duplicate_count: hasDuplicateFilename ? nextCount : 0,
       })
     return res.send(newFile)
