@@ -135,6 +135,7 @@ function processFile (file) {
     // Create a unique filename if there is a duplicate filename
     if (hasDuplicateFilename) {
       // Find duplicates of the original filename instead of the cleaned filename if adding it would create a duplicate
+      // e.g. inputting kitten(1).jpg when kitten(1).jpg already exists in db should produce kitten(1)(1).jpg
       if (existingCounts.has(duplicateCount)) {
         // Re-calculate variables for original fileaname
         hash = getHash(file.name)
