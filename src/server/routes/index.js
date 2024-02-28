@@ -123,31 +123,34 @@ function buildRoutes (router) {
 function processFile (file) {
     let uniqueFilename = file.name
     const { duplicateCount, cleanedFilename } = extractDuplicateCount(file.name)
-    let hash = getHash(cleanedFilename)
+    let hash = getHash(cleanedFilename) // Calculate hash of the filename cleaned of any duplicate counts
     let count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
     let hasDuplicateFilename = count > 0
-
+    // Get existing duplicate counts for the filename
     let duplicateCounts = getDuplicateCounts(hash)
-
+    let existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
+    // Separate file into name part and extension
     const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
     let nextCount = duplicateCount !== 0 ? 1 : 0 // Initialize nextCount to 1 if filename already has a duplicate count, else 0
-    let existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
 
     // Find duplicates of the original filename instead of the cleaned filename if adding it would create a duplicate
     if (hasDuplicateFilename && existingCounts.has(duplicateCount)) {
-        hash = getHash(file.name)
-        count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
-        hasDuplicateFilename = count > 0
-        duplicateCounts = getDuplicateCounts(hash)
-        existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
-        while (existingCounts.has(nextCount)) {
-            nextCount++
-        }
-        uniqueFilename = `${namePart}(${nextCount}).${extension}`
+      // Re-calculate variables for original fileaname
+      hash = getHash(file.name)
+      count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
+      hasDuplicateFilename = count > 0
+      duplicateCounts = getDuplicateCounts(hash)
+      existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
+      while (existingCounts.has(nextCount)) {
+          nextCount++
+      }
+      // Make a unique file name by appending the next available duplicate count 
+      uniqueFilename = `${namePart}(${nextCount}).${extension}`
 
-        return { uniqueFilename, hash, nextCount }
+      return { uniqueFilename, hash, nextCount }
     }
 
+    // If the filename is a duplicate, get the next available duplicate count to append to the filename
     if (hasDuplicateFilename) {
       while (existingCounts.has(nextCount)) {
           nextCount++
