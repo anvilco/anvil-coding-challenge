@@ -144,15 +144,19 @@ function processFile (file) {
             nextCount++
         }
         uniqueFilename = `${namePart}(${nextCount}).${extension}`
+
+        return { uniqueFilename, hash, nextCount }
     }
 
     if (hasDuplicateFilename) {
-        while (existingCounts.has(nextCount)) {
-            nextCount++
-        }
-        if (nextCount > 0) {
-            uniqueFilename = `${namePart}(${nextCount}).${extension}`
-        }
+      while (existingCounts.has(nextCount)) {
+          nextCount++
+      }
+      if (nextCount > 0) {
+          uniqueFilename = `${namePart}(${nextCount}).${extension}`
+      }
+
+      return { uniqueFilename, hash, nextCount }
     }
 
     return { uniqueFilename, hash, nextCount }
