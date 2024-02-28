@@ -100,7 +100,7 @@ function buildRoutes (router) {
 
   router.post('/api/files', async (req, res) => {
     const { description, file } = req.body
-    const { uniqueFilename, hash, nextCount } = processFile(file)
+    const { filename, hash, nextCount } = processFile(file)
     
     const newFile = db.instance.prepare(`
         INSERT INTO files
@@ -110,7 +110,7 @@ function buildRoutes (router) {
         RETURNING *
     `).get({
         description,
-        filename: uniqueFilename,
+        filename,
         mimetype: file.mimetype,
         src: file.base64,
         filename_hash: hash,
@@ -127,42 +127,33 @@ function processFile (file) {
     let count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
     let hasDuplicateFilename = count > 0
     // Get existing duplicate counts for the filename
-    let duplicateCounts = getDuplicateCounts(hash)
-    let existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
+    let existingCounts = new Set(getDuplicateCounts(hash).map((row) => row.duplicate_count))
     // Separate file into name part and extension
     const [namePart, extension] = file.name.split('.').length > 1 ? file.name.split('.') : [file.name, '']
     let nextCount = duplicateCount !== 0 ? 1 : 0 // Initialize nextCount to 1 if filename already has a duplicate count, else 0
 
-    // Find duplicates of the original filename instead of the cleaned filename if adding it would create a duplicate
-    if (hasDuplicateFilename && existingCounts.has(duplicateCount)) {
-      // Re-calculate variables for original fileaname
-      hash = getHash(file.name)
-      count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
-      hasDuplicateFilename = count > 0
-      duplicateCounts = getDuplicateCounts(hash)
-      existingCounts = new Set(duplicateCounts.map((row) => row.duplicate_count))
-      while (existingCounts.has(nextCount)) {
-          nextCount++
-      }
-      // Make a unique file name by appending the next available duplicate count 
-      uniqueFilename = `${namePart}(${nextCount}).${extension}`
-
-      return { uniqueFilename, hash, nextCount }
-    }
-
-    // If the filename is a duplicate, get the next available duplicate count to append to the filename
+    // Create a unique filename if there is a duplicate filename
     if (hasDuplicateFilename) {
+      // Find duplicates of the original filename instead of the cleaned filename if adding it would create a duplicate
+      if (existingCounts.has(duplicateCount)) {
+        // Re-calculate variables for original fileaname
+        hash = getHash(file.name)
+        count = db.instance.prepare("SELECT COUNT(*) as count FROM files WHERE filename_hash = ?").pluck().get(hash)
+        hasDuplicateFilename = count > 0
+        existingCounts = new Set(getDuplicateCounts(hash).map((row) => row.duplicate_count))
+      }
+
+      // Calculate the next available duplicate count
       while (existingCounts.has(nextCount)) {
-          nextCount++
+        nextCount++
       }
       if (nextCount > 0) {
+          // If it is greater than 0, append it to the filename
           uniqueFilename = `${namePart}(${nextCount}).${extension}`
       }
-
-      return { uniqueFilename, hash, nextCount }
     }
 
-    return { uniqueFilename, hash, nextCount }
+    return { filename: uniqueFilename, hash, nextCount }
 }
 
 // Retrieve all duplicate counts for the given hash from the database
