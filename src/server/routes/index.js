@@ -1,4 +1,3 @@
-const os = require('os')
 const db = require('db')
 
 // SQLite usage
@@ -7,7 +6,7 @@ const db = require('db')
 
 function buildRoutes (router) {
   router.get('/api/username', async (req, res) => {
-    return res.send({ username: os.userInfo().username })
+    return res.send({ username: req.username })
   })
 
   router.get('/api/files', async (req, res) => {
