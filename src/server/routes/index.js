@@ -1,5 +1,6 @@
 const db = require('db')
 const FileRepository = require('db/repositories/fileRepository')
+const FileUploadHelper = require('utils/fileUploader')
 
 // SQLite usage
 // https://github.com/WiseLibs/better-sqlite3
@@ -21,9 +22,43 @@ function buildRoutes (router) {
     const username = req.username
     const { description, file } = req.body
 
+    const dbOriginalFile = fileRepository.getOriginalFile({ 
+      username,
+      filename: file.name,
+      base64: file.base64,
+    })
+
+    let filename = file.name
+
+    if (dbOriginalFile) {
+      const fileUploader = new FileUploadHelper(file)
+      const existingFiles = fileRepository.findAllLike({
+        username, 
+        filename: fileUploader.fileBaseName, 
+        base64: file.base64, 
+        fileExt: fileUploader.fileExt,
+      })
+
+      if (!existingFiles.length) {
+        filename = fileUploader.generateDuplicateFilename(dbOriginalFile.filename)
+      } else {
+        // If there are multiple duplicate db files, finding the next duplicate number (fill the gaps)
+        let i = 0
+          while (i < existingFiles.length - 1) {
+            iters += 1
+            // if current file name identifier does not match the current iteration, breakout out of loop. Missing a duplicate, gap should be filled
+            if (existingFiles[i].filename !== `${fileUploader.fileBaseName}(${i+1}).${fileUploader.fileExt}`) {
+              break
+            }
+            i += 1
+          }
+          filename = fileUploader.generateDuplicateFilename(existingFiles[i].filename, i+1)
+      }
+    }
+
     const newFile = fileRepository.insertFile({
       description,
-      filename: file.name,
+      filename,
       mimetype: file.mimetype,
       src: file.base64,
       username,
