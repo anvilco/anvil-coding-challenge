@@ -1,4 +1,5 @@
 const path = require('path')
+const os = require('os')
 const express = require('express')
 const appModulePath = require('app-module-path')
 
@@ -6,6 +7,12 @@ appModulePath.addPath(path.join(__dirname, '..', '..', 'src'))
 
 const routes = require('./routes')
 const app = express()
+
+// Middleware to attach username to request object
+app.use((req, res, next) => {
+  req.username = os.userInfo().username
+  next()
+})
 
 app.use(express.static('dist'))
 app.use(express.json({
