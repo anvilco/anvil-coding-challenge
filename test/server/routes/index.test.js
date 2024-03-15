@@ -44,7 +44,6 @@ describe('routes', function () {
       send: (value) => { res.body = value },
     }
     router = buildRoutes(buildMockRouter())
-    db.resetToSeed()
   })
 
   describe('GET /api/files', function () {
@@ -69,6 +68,7 @@ describe('routes', function () {
     beforeEach(async function () {
       route = '/api/files'
       inputFile = buildUploadData({})
+      db.resetToSeed()
     })
 
     it('uploads a file and returns its metadata', async function () {
@@ -142,6 +142,64 @@ describe('routes', function () {
         inputFile,
         expectedFilename: `${testBaseFileName}(1).${testFileExtension}`,
         responseBody: res.body,
+      })
+    })
+  })
+
+  describe('Upload duplicates fill gaps, original file named', function () {
+
+    this.beforeAll(async function () {
+      route = '/api/files'
+      db.resetToSeed()
+      inputFile = buildUploadData({})
+      fileRepository.bulkInsertFiles([
+        {
+          description: inputFile.description,
+          filename: inputFile.file.name,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+        {
+          description: inputFile.description,
+          filename: `${testBaseFileName}(1).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+        {
+          description: inputFile.description,
+          filename: `${testBaseFileName}(3).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+        {
+          description: inputFile.description,
+          filename: `${testBaseFileName}(5).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+      ])
+    })
+
+    const testCases = [
+      `${testBaseFileName}(2).${testFileExtension}`,
+      `${testBaseFileName}(4).${testFileExtension}`,
+      `${testBaseFileName}(6).${testFileExtension}`,
+    ]
+  
+    testCases.forEach((testCase) => {
+      it(`uploaded file name should be "${testCase}"`, async function () {
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+
+        validateTest({
+          inputFile,
+          expectedFilename: testCase,
+          responseBody: res.body,
+        })
       })
     })
   })
