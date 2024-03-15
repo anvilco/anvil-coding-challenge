@@ -142,8 +142,84 @@ describe('routes', function () {
         inputFile,
         expectedFilename: `${testBaseFileName}(1).${testFileExtension}`,
         responseBody: res.body,
+      }) 
+    })
+
+    describe('Uploading duplicate files, non-duplicate syntax file names', function () {
+
+      it('uploads duplicate file, original does not exists in db', async function () {
+        // adding original file to db, but with the syntax of a duplicate filename
+        fileRepository.insertFile({
+          description: inputFile.description,
+          filename: `${testBaseFileName}(1).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        })
+  
+        // uploading original file
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+
+        validateTest({
+          inputFile,
+          expectedFilename: inputFile.file.name,
+          responseBody: res.body,
+        })
+      })
+
+      it('uploads 1st duplicate, original exists in db', async function () {
+        // adding original file to db
+        fileRepository.insertFile({
+          description: inputFile.description,
+          filename: inputFile.file.name,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        })
+  
+        // uploading a duplicate
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+
+        validateTest({
+          inputFile,
+          expectedFilename: `${testBaseFileName}(1).${testFileExtension}`,
+          responseBody: res.body,
+        })
+      })
+  
+      it('uploads 2nd duplicate file, original exists in db', async function () {
+        // inserting previous uploads
+        fileRepository.bulkInsertFiles([
+          {
+            description: inputFile.description,
+            filename: inputFile.file.name,
+            mimetype: inputFile.file.mimetype,
+            src: inputFile.file.base64,
+            username,
+          },
+          {
+            description: inputFile.description,
+            filename: `${testBaseFileName}(1).${testFileExtension}`,
+            mimetype: inputFile.file.mimetype,
+            src: inputFile.file.base64,
+            username,
+          },
+        ])
+  
+        // uploading original file
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+
+        validateTest({
+          inputFile,
+          expectedFilename: `${testBaseFileName}(2).${testFileExtension}`,
+          responseBody: res.body,
+        })
       })
     })
+
   })
 
   describe('Upload duplicates fill gaps, original file named', function () {
