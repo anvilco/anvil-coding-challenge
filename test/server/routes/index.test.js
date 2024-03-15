@@ -2,13 +2,15 @@ const { expect } = require('chai')
 const db = require('db')
 const buildRoutes = require('server/routes')
 const buildMockRouter = require('../buildMockRouter')
+const FileRepository = require('db/repositories/fileRepository')
 
 describe('routes', function () {
-  let router, route, res, req, inputFile
+  let router, route, res, req, inputFile, totalSeedTestFiles
 
   const testBaseFileName = 'bobby-tables'
   const testFileExtension = 'jpg'
   const username = 'testuser'
+  const fileRepository = new FileRepository(db.instance)
 
   function buildUploadData ({
     baseFileName=null,
@@ -48,11 +50,18 @@ describe('routes', function () {
   describe('GET /api/files', function () {
     beforeEach(async function () {
       route = '/api/files'
+      totalSeedTestFiles = fileRepository.getTotal()
     })
 
     it('returns all the files', async function () {
       await router.getRoutes[route](req, res)
-      expect(res.body).to.have.length(5)
+      expect(res.body).to.have.length(totalSeedTestFiles)
+    })
+
+    it('returns 0 files for user with no uploads', async function () {
+      req.username = 'test1'
+      await router.getRoutes[route](req, res)
+      expect(res.body).to.have.length(0)
     })
   })
 
