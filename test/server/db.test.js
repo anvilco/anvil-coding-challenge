@@ -12,15 +12,16 @@ describe('db', function () {
     res = db.instance
       .prepare(`
         INSERT INTO files
-          (description, filename, mimetype, src)
+          (description, filename, mimetype, src, username)
           VALUES
-          (@description, @filename, @mimetype, @src)
+          (@description, @filename, @mimetype, @src, @username)
       `)
       .run({
         description: 'My file',
         filename,
         mimetype: 'text/plain',
         src: 'abc',
+        username: 'test',
       })
     expect(res).to.be.ok
   })
