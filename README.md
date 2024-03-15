@@ -52,3 +52,14 @@ You can add new files!
 <img width="636" alt="Screen Shot 2020-05-07 at 12 30 03 PM" src="https://user-images.githubusercontent.com/69169/81336645-8cb1a780-905e-11ea-86ce-f882a2d5fd46.png">
 
 That's all it does without your help!
+
+
+#### Notes
+I configured the application to only display files uploaded by the user
+If there was functionality on the front end to look at files for a different user, that is possible
+Some of changes I would make if this was truly for production:
+1) Use pagination to display the files, have buttons for next, back and clicking on the individual pages
+2) Allow user to sort by title and date uploaded (asc or desc)
+    - add updated_at and created_at columns to "files" table to facilitate
+3) Have table for user and add `user_id` colmumn in "files" table
+4) Implement authentication middleware and not get username from os

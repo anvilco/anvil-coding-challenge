@@ -2,6 +2,7 @@ const fs = require('fs')
 const path = require('path')
 const Database = require('better-sqlite3')
 const seedData = require('./seed.json')
+const FileRepository = require('../src/db/repositories/fileRepository')
 
 const SEED_PATH = path.join(__dirname, '..', 'src', 'db', 'seed.db')
 
@@ -12,34 +13,15 @@ function main () {
   }
 
   const db = new Database(SEED_PATH)
-  createTables(db)
-  addSeedData(db)
+  const fileRepository = new FileRepository(db)
+  fileRepository.createTable()
+  addSeedData(fileRepository)
 }
 
-function createTables (db) {
-  console.log('Creating files table')
-  db.prepare(`
-    CREATE TABLE files (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      description TEXT not null,
-      filename TEXT not null,
-      mimetype TEXT not null,
-      src TEXT not null
-    )
-  `).run()
-}
-
-function addSeedData (db) {
-  console.log('Inserting seed data')
-  const insertFiles = db.prepare(`
-    INSERT INTO files
-      (description, filename, mimetype, src)
-      VALUES
-      (@description, @filename, @mimetype, @src)
-  `)
-
+function addSeedData (fileRepository) {
+  console.log('Inserting seed data');
   for (const file of seedData.files) {
-    insertFiles.run(file)
+    fileRepository.insertFile(file.description, file.filename, file.mimetype, file.src, file.username);
   }
 }
 
