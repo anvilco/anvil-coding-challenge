@@ -19,9 +19,24 @@ class FileRepository {
         mimetype TEXT NOT NULL,
         src TEXT NOT NULL,
         username TEXT NOT NULL
-      )
+      );
     `).run()
-    // this.db.prepare('ADD COLUMN IF NOT EXISTS')
+    
+    this.db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_filename ON files (filename);
+    `).run()
+
+    this.db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_filename ON files (filename);
+    `).run()
+
+    this.db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_username ON files (username);
+    `).run()
+
+    this.db.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_src ON files (src);
+    `).run()
   }
 
   /**
@@ -95,13 +110,19 @@ class FileRepository {
   /**
    * Retrieves paginated files associated with a specific user.
    * @param {string} username - The username of the user.
+   * @param {number} size - The maximum number of files to retrieve.
+   * @param {number} page - The number of files to skip before starting to return records.
    * @returns {object} An object of file records uploaded by the user and total.
    */
-  getUserFiles ({ username }) {
+  getUserFiles ({ username, page, size }) {
+    page = page || 1
+    size = size || 30
+    const offset = (page -1) * size
     return this.db.prepare(`
       SELECT * FROM files
       WHERE username = :username
-    `).all({ username })
+      LIMIT :limit OFFSET :offset
+    `).all({ username, limit: size, offset })
   }
 
   /**
@@ -116,11 +137,15 @@ class FileRepository {
 
   /**
    * Retrieves all files stored in the database.
-   * @returns {Array} An array of all file records stored.
+   * @param {number} size - The maximum number of files to retrieve.
+   * @param {number} page - The number of files to skip before starting to return records.s
    * @returns {Array} An array of all file records.
    */
-  getAllFiles () {
-    return this.db.prepare(`SELECT * FROM files`).all()
+  getAllFiles ({ page=1, size=30 }) {
+    page = page || 1
+    size = size || 30
+    const offset = (page - 1) * size
+    return this.db.prepare(`SELECT * FROM files LIMIT :limit OFFSET :offset`).all({ limit: size, offset })
   }
 
   /**
@@ -143,7 +168,7 @@ class FileRepository {
    */
   getOriginalFile ({ username, filename, base64 }) {
     return this.db.prepare(`
-      SELECT * 
+      SELECT id, filename, src
       FROM files 
       WHERE 
         filename == :filename
@@ -157,27 +182,32 @@ class FileRepository {
     })
   }
   
-  // getCountMatchingCriteria
   /**
    * Retrieves all files similar to the provided criteria. Used to get the list of duplicate document
    * @param {Object} criteria - An object containing the criteria (username, filename, fileExt, and base64) for finding similar files.
    * @returns {Array} An object with records similar to the provided criteria and total matching in DB.
    */
-  findAllLike ({ username, filename, fileExt, base64 }) {
+  findAllLike ({ username, filename, fileExt, base64, size=30, page=1 }) {
+    page = page || 1
+    size = size || 30
+    const offset = (page - 1) * size
     return this.db.prepare(`
-      SELECT * 
+      SELECT id, filename, src
       FROM files 
       WHERE 
         filename == :filename OR filename LIKE :similarFilename
         AND src == :src
         AND username == :username
       ORDER BY filename ASC
+      LIMIT :limit OFFSET :offset
     `)
     .all({
       filename: `${filename}.${fileExt}`,
       similarFilename: `${filename}(%.${fileExt}`,
       src: base64,
       username,
+      offset,
+      limit: size,
     })
   }
 }
