@@ -81,5 +81,68 @@ describe('routes', function () {
         responseBody: res.body,
       })
     })
+
+    it('users uploads a file, same filename as file uploaded by different user', async function () {
+      const username2 = 'testuser2'
+      fileRepository.insertFile({
+        description: inputFile.description,
+        filename: inputFile.file.name,
+        mimetype: inputFile.file.mimetype,
+        src: inputFile.file.base64,
+        username: username2,
+      })
+      const totalRecords = fileRepository.getTotal()
+      expect(totalRecords).to.equal(totalSeedTestFiles + 1)
+
+      const input = buildUploadData({})
+      req.body = input
+      await router.postRoutes[route](req, res)
+      
+      validateTest({
+        inputFile,
+        expectedFilename:input.file.name,
+        responseBody: res.body,
+      })
+    })
+
+    it('uploads 1st duplicate, original exists in db', async function () {
+      fileRepository.insertFile({
+        description: inputFile.description,
+        filename: inputFile.file.name,
+        mimetype: inputFile.file.mimetype,
+        src: inputFile.file.base64,
+        username,
+      })
+
+      // uploading a duplicate
+      req.body = inputFile
+      await router.postRoutes[route](req, res)
+
+      validateTest({
+        inputFile,
+        expectedFilename: `${testBaseFileName}(1).${testFileExtension}`,
+        responseBody: res.body,
+      })
+    })
+
+    it('uploads 1st duplicate, original exists in db for user with 100+ duplicate files', async function () {
+      fileRepository.insertFile({
+        description: inputFile.description,
+        filename: inputFile.file.name,
+        mimetype: inputFile.file.mimetype,
+        src: inputFile.file.base64,
+        username,
+      })
+
+      // uploading a duplicate
+      req.body = inputFile
+      await router.postRoutes[route](req, res)
+
+      validateTest({
+        inputFile,
+        expectedFilename: `${testBaseFileName}(1).${testFileExtension}`,
+        responseBody: res.body,
+      })
+    })
   })
 })
