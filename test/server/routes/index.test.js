@@ -1,7 +1,6 @@
 const { expect } = require('chai')
 const db = require('db')
 const buildRoutes = require('server/routes')
-// const buildFileRoutes = require('server/routes/files')
 const buildMockRouter = require('../buildMockRouter')
 const FileRepository = require('db/repositories/fileRepository')
 

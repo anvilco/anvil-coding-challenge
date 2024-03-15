@@ -21,7 +21,15 @@ class FileRepository {
         username TEXT NOT NULL
       );
     `).run()
-    
+    const schema = this.db.prepare("PRAGMA table_info('files')").all()
+    const usernameColumnExists = schema.some((column) => column.name === 'username')
+
+    if (!usernameColumnExists) {
+      this.db.prepare(`
+        ALTER TABLE files ADD COLUMN username TEXT;
+      `).run()
+    }
+    // add column for duplicate count and orig_hashed_filename
     this.db.prepare(`
       CREATE INDEX IF NOT EXISTS idx_filename ON files (filename);
     `).run()
@@ -53,7 +61,6 @@ class FileRepository {
       `)
       .run({ description, filename, mimetype, src, username })
     const dbFile = this.getFileById(result.lastInsertRowid)
-    // console.log(`[INFO] FileRepository.insertFile(): "${filename}"`, dbFile)
     return dbFile
   }
 
@@ -181,7 +188,7 @@ class FileRepository {
       src: base64,
     })
   }
-  
+
   /**
    * Retrieves all files similar to the provided criteria. Used to get the list of duplicate document
    * @param {Object} criteria - An object containing the criteria (username, filename, fileExt, and base64) for finding similar files.

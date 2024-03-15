@@ -14,7 +14,7 @@ function buildRoutes (router) {
   })
 
   router.get('/api/files', async (req, res) => {
-    const { page = 0, size = 30 } = req.query
+    const { page = 1, size = 30 } = req.query
     const files = fileRepository.getUserFiles({ username: req.username, page: parseInt(page), size: parseInt(size) })
     return res.send(files)
   })
