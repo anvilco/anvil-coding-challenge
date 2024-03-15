@@ -125,26 +125,6 @@ describe('routes', function () {
       })
     })
 
-    it('uploads 1st duplicate, original exists in db for user with 100+ duplicate files', async function () {
-      fileRepository.insertFile({
-        description: inputFile.description,
-        filename: inputFile.file.name,
-        mimetype: inputFile.file.mimetype,
-        src: inputFile.file.base64,
-        username,
-      })
-
-      // uploading a duplicate
-      req.body = inputFile
-      await router.postRoutes[route](req, res)
-
-      validateTest({
-        inputFile,
-        expectedFilename: `${testBaseFileName}(1).${testFileExtension}`,
-        responseBody: res.body,
-      }) 
-    })
-
     describe('Uploading duplicate files, non-duplicate syntax file names', function () {
 
       it('uploads duplicate file, original does not exists in db', async function () {
@@ -220,6 +200,75 @@ describe('routes', function () {
       })
     })
 
+    describe('Uploading duplicate files, names in duplicate syntax', function () {
+      beforeEach(function () {
+        inputFile = buildUploadData({ baseFileName: 'test(1)', fileExt: 'png' })
+      })
+
+      it('uploads orignal file', async function () {
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+  
+
+        validateTest({
+          inputFile,
+          expectedFilename: inputFile.file.name,
+          responseBody: res.body,
+        })   
+      })
+
+      it('uploads 1st duplicate file (2nd uploaded)', async function () {
+        // inserting original into DB
+        fileRepository.insertFile({
+          description: inputFile.description,
+          filename: 'test(1).png',
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        })
+        
+        // uploading duplicate of test(1).png
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+
+        validateTest({
+          inputFile,
+          expectedFilename: 'test(1)(1).png',
+          responseBody: res.body,
+        })   
+      })
+
+      it('uploads 2nd duplicate file (3rd uploaded)', async function () {
+        // inseting files into DB
+        fileRepository.bulkInsertFiles([
+          {
+            description: inputFile.description,
+            filename: 'test(1).png',
+            mimetype: inputFile.file.mimetype,
+            src: inputFile.file.base64,
+            username,
+          },
+          {
+            description: inputFile.description,
+            filename: 'test(1)(1).png',
+            mimetype: inputFile.file.mimetype,
+            src: inputFile.file.base64,
+            username,
+          },
+        ])
+
+        // uploading 3rd file (2nd duplicate) of test(1).png
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+
+        validateTest({
+          inputFile,
+          expectedFilename: 'test(1)(2).png',
+          responseBody: res.body,
+        })     
+      })
+    })
+
   })
 
   describe('Upload duplicates fill gaps, original file named', function () {
@@ -264,6 +313,73 @@ describe('routes', function () {
       `${testBaseFileName}(2).${testFileExtension}`,
       `${testBaseFileName}(4).${testFileExtension}`,
       `${testBaseFileName}(6).${testFileExtension}`,
+    ]
+  
+    testCases.forEach((testCase) => {
+      it(`uploaded file name should be "${testCase}"`, async function () {
+        req.body = inputFile
+        await router.postRoutes[route](req, res)
+
+        validateTest({
+          inputFile,
+          expectedFilename: testCase,
+          responseBody: res.body,
+        })
+      })
+    })
+  })
+
+  describe('Upload duplicates fill gaps, original file name is already in duplicate syntax', function () {
+    this.beforeAll(async function () {
+      const baseTestFilename = `${testBaseFileName}(1)`
+      route = '/api/files'
+      inputFile = buildUploadData({ baseFileName: baseTestFilename })
+      db.resetToSeed()
+      fileRepository.bulkInsertFiles([
+        {
+          description: inputFile.description,
+          filename: inputFile.file.name,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+        {
+          description: inputFile.description,
+          filename: `${baseTestFilename}(2).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+        {
+          description: inputFile.description,
+          filename: `${baseTestFilename}(3).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+        {
+          description: inputFile.description,
+          filename: `${baseTestFilename}(5).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+        {
+          description: inputFile.description,
+          filename: `${baseTestFilename}(8).${testFileExtension}`,
+          mimetype: inputFile.file.mimetype,
+          src: inputFile.file.base64,
+          username,
+        },
+      ])
+    })
+
+    const testCases = [
+      `${testBaseFileName}(1)(1).${testFileExtension}`,
+      `${testBaseFileName}(1)(4).${testFileExtension}`,
+      `${testBaseFileName}(1)(6).${testFileExtension}`,
+      `${testBaseFileName}(1)(7).${testFileExtension}`,
+      `${testBaseFileName}(1)(9).${testFileExtension}`,
     ]
   
     testCases.forEach((testCase) => {
