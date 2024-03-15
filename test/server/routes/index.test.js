@@ -1,6 +1,7 @@
 const { expect } = require('chai')
 const db = require('db')
 const buildRoutes = require('server/routes')
+// const buildFileRoutes = require('server/routes/files')
 const buildMockRouter = require('../buildMockRouter')
 const FileRepository = require('db/repositories/fileRepository')
 
@@ -9,7 +10,7 @@ describe('routes', function () {
 
   const testBaseFileName = 'bobby-tables'
   const testFileExtension = 'jpg'
-  const username = 'testuser'
+  const testUsername = 'testuser'
   const fileRepository = new FileRepository(db.instance)
 
   function buildUploadData ({
@@ -36,9 +37,36 @@ describe('routes', function () {
     expect(responseBody.src).to.equal(inputFile.file.base64)
   }
 
+  function generateTestFiles ({ baseFileName, count, missingNums=[], username }) {
+    const initFile = buildUploadData({ baseFileName })
+    const files = [
+      {
+        description: initFile.description,
+        filename: initFile.file.name,
+        mimetype: initFile.file.mimetype,
+        src: initFile.file.base64,
+        username: username || testUsername,
+      },
+    ]
+    for (let i= 1; i < count; i++) {
+      if (!missingNums.includes(i)) {
+        const f = buildUploadData({ baseFileName: `${baseFileName}(${i})` })
+        files.push({
+          description: f.description,
+          filename: f.file.name,
+          mimetype: f.file.mimetype,
+          src: f.file.base64,
+          username: username || testUsername,
+        })
+      }
+    }
+    return [initFile, files]
+  }
+
   beforeEach(async function () {
     req = {
-      username,
+      username: testUsername,
+      query: {},
     }
     res = {
       send: (value) => { res.body = value },
@@ -49,6 +77,7 @@ describe('routes', function () {
   describe('GET /api/files', function () {
     beforeEach(async function () {
       route = '/api/files'
+      db.resetToSeed()
       totalSeedTestFiles = fileRepository.getTotal()
     })
 
@@ -62,6 +91,33 @@ describe('routes', function () {
       await router.getRoutes[route](req, res)
       expect(res.body).to.have.length(0)
     })
+
+    it('display 1st page of user files', async function () {
+      req.username = 'test1'
+      const [, testFiles] = generateTestFiles({
+        baseFileName: 'test1',
+        count: 50,
+        username: req.username,
+      })
+      fileRepository.bulkInsertFiles(testFiles)
+      await router.getRoutes[route](req, res)
+      expect(res.body).to.have.length(30)
+    })
+
+    it('display 1st page of user files', async function () {
+      req.username = 'test1'
+      const [, testFiles] = generateTestFiles({
+        baseFileName: 'test1',
+        count: 50,
+        username: req.username,
+      })
+      req.query = {
+        page: 2,
+      }
+      fileRepository.bulkInsertFiles(testFiles)
+      await router.getRoutes[route](req, res)
+      expect(res.body).to.have.length(20)
+    })
   })
 
   describe('POST /api/files', function () {
@@ -69,6 +125,7 @@ describe('routes', function () {
       route = '/api/files'
       inputFile = buildUploadData({})
       db.resetToSeed()
+      totalSeedTestFiles = fileRepository.getTotal()
     })
 
     it('uploads a file and returns its metadata', async function () {
@@ -100,7 +157,7 @@ describe('routes', function () {
       
       validateTest({
         inputFile,
-        expectedFilename:input.file.name,
+        expectedFilename: input.file.name,
         responseBody: res.body,
       })
     })
@@ -111,7 +168,7 @@ describe('routes', function () {
         filename: inputFile.file.name,
         mimetype: inputFile.file.mimetype,
         src: inputFile.file.base64,
-        username,
+        username: testUsername,
       })
 
       // uploading a duplicate
@@ -134,7 +191,7 @@ describe('routes', function () {
           filename: `${testBaseFileName}(1).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         })
   
         // uploading original file
@@ -155,7 +212,7 @@ describe('routes', function () {
           filename: inputFile.file.name,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         })
   
         // uploading a duplicate
@@ -177,14 +234,14 @@ describe('routes', function () {
             filename: inputFile.file.name,
             mimetype: inputFile.file.mimetype,
             src: inputFile.file.base64,
-            username,
+            username: testUsername,
           },
           {
             description: inputFile.description,
             filename: `${testBaseFileName}(1).${testFileExtension}`,
             mimetype: inputFile.file.mimetype,
             src: inputFile.file.base64,
-            username,
+            username: testUsername,
           },
         ])
   
@@ -224,7 +281,7 @@ describe('routes', function () {
           filename: 'test(1).png',
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         })
         
         // uploading duplicate of test(1).png
@@ -246,14 +303,14 @@ describe('routes', function () {
             filename: 'test(1).png',
             mimetype: inputFile.file.mimetype,
             src: inputFile.file.base64,
-            username,
+            username: testUsername,
           },
           {
             description: inputFile.description,
             filename: 'test(1)(1).png',
             mimetype: inputFile.file.mimetype,
             src: inputFile.file.base64,
-            username,
+            username: testUsername,
           },
         ])
 
@@ -269,6 +326,26 @@ describe('routes', function () {
       })
     })
 
+    // WIP
+    it.skip('uploads 1st duplicate, original exists in db for user with 100+ duplicate files', async function () {
+      const skipDupNums = [30, 49]
+      const [initFile, testFiles] = generateTestFiles({
+        baseFileName: 'test1', 
+        count: 100, 
+        missingNums: skipDupNums,
+      })
+      fileRepository.bulkInsertFiles(testFiles)
+      
+      // uploading a duplicate
+      req.body = initFile
+      await router.postRoutes[route](req, res)
+
+      validateTest({
+        inputFile: initFile,
+        expectedFilename: `test1(30).${testFileExtension}`,
+        responseBody: res.body,
+      }) 
+    })
   })
 
   describe('Upload duplicates fill gaps, original file named', function () {
@@ -283,28 +360,28 @@ describe('routes', function () {
           filename: inputFile.file.name,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
         {
           description: inputFile.description,
           filename: `${testBaseFileName}(1).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
         {
           description: inputFile.description,
           filename: `${testBaseFileName}(3).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
         {
           description: inputFile.description,
           filename: `${testBaseFileName}(5).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
       ])
     })
@@ -341,35 +418,35 @@ describe('routes', function () {
           filename: inputFile.file.name,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
         {
           description: inputFile.description,
           filename: `${baseTestFilename}(2).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
         {
           description: inputFile.description,
           filename: `${baseTestFilename}(3).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
         {
           description: inputFile.description,
           filename: `${baseTestFilename}(5).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
         {
           description: inputFile.description,
           filename: `${baseTestFilename}(8).${testFileExtension}`,
           mimetype: inputFile.file.mimetype,
           src: inputFile.file.base64,
-          username,
+          username: testUsername,
         },
       ])
     })
