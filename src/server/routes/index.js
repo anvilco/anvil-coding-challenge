@@ -44,6 +44,7 @@ function buildRoutes (router) {
         filename = fileUploader.generateDuplicateFilename(dbOriginalFile.filename)
       } else {
         // If there are multiple duplicate db files, finding the next duplicate number (fill the gaps)
+        // TODO: fix for 10+ duplicate files 
         let i = 0
           while (i < existingFiles.length - 1) {
             // if current file name identifier does not match the current iteration, breakout out of loop. Missing a duplicate, gap should be filled
