@@ -5,6 +5,26 @@ const buildMockRouter = require('../buildMockRouter')
 
 describe('routes', function () {
   let router, route, res, req
+
+  const testBaseFileName = 'bobby-tables'
+  const testFileExtension = 'jpg'
+
+  function buildUploadData ({
+    baseFileName=null,
+    fileExt=null,
+    base64=null,
+    mimetype=null,
+  }) {
+    return {
+      description: 'A portait of an artist',
+      file: {
+        name: `${baseFileName || testBaseFileName}.${fileExt || testFileExtension}`,
+        mimetype: mimetype || 'image/jpg',
+        base64: base64 || 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==',
+      },
+    }
+  }
+
   beforeEach(async function () {
     req = {}
     res = {
