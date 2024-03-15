@@ -14,7 +14,8 @@ function buildRoutes (router) {
   })
 
   router.get('/api/files', async (req, res) => {
-    const files = fileRepository.getUserFiles({ username: req.username })
+    const { page = 0, size = 30 } = req.query
+    const files = fileRepository.getUserFiles({ username: req.username, page: parseInt(page), size: parseInt(size) })
     return res.send(files)
   })
 
@@ -45,7 +46,6 @@ function buildRoutes (router) {
         // If there are multiple duplicate db files, finding the next duplicate number (fill the gaps)
         let i = 0
           while (i < existingFiles.length - 1) {
-            iters += 1
             // if current file name identifier does not match the current iteration, breakout out of loop. Missing a duplicate, gap should be filled
             if (existingFiles[i].filename !== `${fileUploader.fileBaseName}(${i+1}).${fileUploader.fileExt}`) {
               break
