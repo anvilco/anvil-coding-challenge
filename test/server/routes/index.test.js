@@ -25,6 +25,14 @@ describe('routes', function () {
     }
   }
 
+  function validateTest ({ inputFile, expectedFilename, responseBody }) {
+    expect(responseBody.id).to.be.ok
+    expect(responseBody.description).to.equal(inputFile.description)
+    expect(responseBody.filename).to.equal(expectedFilename)
+    expect(responseBody.mimetype).to.equal(inputFile.file.mimetype)
+    expect(responseBody.src).to.equal(inputFile.file.base64)
+  }
+
   beforeEach(async function () {
     req = {}
     res = {
