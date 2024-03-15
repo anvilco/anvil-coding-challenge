@@ -4,10 +4,11 @@ const buildRoutes = require('server/routes')
 const buildMockRouter = require('../buildMockRouter')
 
 describe('routes', function () {
-  let router, route, res, req
+  let router, route, res, req, inputFile
 
   const testBaseFileName = 'bobby-tables'
   const testFileExtension = 'jpg'
+  const username = 'testuser'
 
   function buildUploadData ({
     baseFileName=null,
@@ -34,7 +35,9 @@ describe('routes', function () {
   }
 
   beforeEach(async function () {
-    req = {}
+    req = {
+      username,
+    }
     res = {
       send: (value) => { res.body = value },
     }
@@ -56,24 +59,18 @@ describe('routes', function () {
   describe('POST /api/files', function () {
     beforeEach(async function () {
       route = '/api/files'
+      inputFile = buildUploadData({})
     })
 
     it('uploads a file and returns its metadata', async function () {
-      const input = {
-        description: 'A portait of an artist',
-        file: {
-          name: 'bobby-tables.jpg',
-          mimetype: 'image/jpg',
-          base64: 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==',
-        },
-      }
-      req.body = input
+      req.body = inputFile
       await router.postRoutes[route](req, res)
-      expect(res.body.id).to.be.ok
-      expect(res.body.description).to.equal(input.description)
-      expect(res.body.filename).to.equal(input.file.name)
-      expect(res.body.mimetype).to.equal(input.file.mimetype)
-      expect(res.body.src).to.equal(input.file.base64)
+
+      validateTest({
+        inputFile,
+        expectedFilename: inputFile.file.name,
+        responseBody: res.body,
+      })
     })
   })
 })
